@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.vanurmedia.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 // Create axios instance with interceptors
 const apiClient = axios.create({
@@ -75,7 +75,9 @@ export const testimonialApi = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        
       });
+      console.log("API RESPONSE 👉", response);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create testimonial');
@@ -86,7 +88,9 @@ export const testimonialApi = {
   getAllTestimonials: async (): Promise<TestimonialsResponse> => {
     try {
       const response = await apiClient.get('/api/v1/testimonial/getAll');
+     
       return response.data;
+
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch testimonials');
     }

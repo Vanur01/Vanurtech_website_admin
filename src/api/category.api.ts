@@ -1,13 +1,11 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.vanurmedia.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 // Create axios instance with interceptors
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  
 });
 
 // Add auth token to requests

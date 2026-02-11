@@ -5,20 +5,26 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  XMarkIcon,
-  CheckIcon,
-  ExclamationTriangleIcon,
   MagnifyingGlassIcon,
+  ExclamationTriangleIcon,
+  CheckIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { projectApi, Project } from '@/api/project.api';
+
+import {
+  projectApi,
+  Project,
+  CreateProjectData,
+  UpdateProjectData,
+} from '@/api/project.api';
 import { categoryApi, Category } from '@/api/category.api';
 
 interface FormData {
   title: string;
-  category: string;
   tags: string;
   description: string;
   website: string;
+  category:string;
 }
 
 const ProjectsPage = () => {
@@ -26,250 +32,197 @@ const ProjectsPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalProjects, setTotalProjects] = useState(0);
   const limit = 10;
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [categoryId, setCategoryId] = useState('');
+   const [isSubmitting, setIsSubmitting] = useState(false);
+const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+const [deleteId, setDeleteId] = useState<string | null>(null);
+const totalProjects = projects.length;
+
   const [formData, setFormData] = useState<FormData>({
     title: '',
-    category: '',
     tags: '',
     description: '',
     website: '',
   });
 
-  // Helper function to get category name from project
-  const getCategoryName = (category: string | { _id: string; name: string; [key: string]: any } | null | undefined): string => {
-    if (!category) return 'Uncategorized';
-    return typeof category === 'string' ? category : category.name;
-  };
-
-  // Fetch categories from API
+  /* ================= FETCH CATEGORIES ================= */
   useEffect(() => {
-    fetchCategories();
+    (async () => {
+      const res = await categoryApi.getAllCategories();
+      if (res.success) setCategories(res.result);
+    })();
   }, []);
 
-  const fetchCategories = async () => {
-    try {
-      const response = await categoryApi.getAllCategories();
-      if (response.success) {
-        setCategories(response.result);
-      }
-    } catch (err: any) {
-      console.error('Error fetching categories:', err);
-    }
-  };
-
-  // Debounce search term
+  /* ================= SEARCH DEBOUNCE ================= */
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
       setCurrentPage(1);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch projects from API
+  /* ================= FETCH PROJECTS ================= */
   useEffect(() => {
     fetchProjects();
   }, [currentPage, debouncedSearch, selectedCategory]);
 
   const fetchProjects = async () => {
     setIsLoading(true);
-    setError('');
     try {
-      const response = await projectApi.getAllProjects(
+      const categoryParam =
+        selectedCategory === 'All' ? '' : selectedCategory;
+
+      const res = await projectApi.getAllProjects(
         currentPage,
         limit,
         debouncedSearch,
-        selectedCategory
+        categoryParam
       );
-      if (response.success) {
-        setProjects(response.result.projects);
-        setTotalPages(response.result.pagination.totalPages);
-        setTotalProjects(response.result.pagination.totalProjects);
+
+      if (res.success) {
+        setProjects(res.result.projects);
+        setTotalPages(res.result.pagination.totalPages);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load projects');
-      console.error('Error fetching projects:', err);
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  /* ================= HELPERS ================= */
+  const getCategoryName = (
+    category: string | { _id: string; name: string } | null | undefined
   ) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    if (!category) return 'Uncategorized';
+    return typeof category === 'string'
+      ? categories.find((c) => c._id === category)?.name || 'Uncategorized'
+      : category.name;
   };
 
-  const handleAddProject = () => {
-    setFormData({
-      title: '',
-      category: '',
-      tags: '',
-      description: '',
-      website: '',
-    });
-    setImagePreview('');
-    setImageFile(null);
-    setEditingId(null);
-    setIsModalOpen(true);
-  };
 
-  const handleEditProject = async (project: Project) => {
-    setIsSubmitting(true);
-    try {
-      const response = await projectApi.getProjectById(project._id);
-      if (response.success) {
-        const fullProject = response.result;
-        // Extract category ID - handle both string and object
-        const categoryId = typeof fullProject.category === 'string' 
-          ? fullProject.category 
-          : fullProject.category._id;
-        
-        setFormData({
-          title: fullProject.title,
-          category: categoryId,
-          tags: fullProject.tags.join(', '),
-          description: fullProject.description,
-          website: fullProject.website || '',
-        });
-        setImagePreview(fullProject.image);
-        setImageFile(null);
-        setEditingId(fullProject._id);
-        setIsModalOpen(true);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch project details:', err);
-    } finally {
-      setIsSubmitting(false);
+  /* ================= HANDLERS ================= */
+
+const handleAddProject = () => {
+  setEditingId(null);
+  setFormData({
+    title: '',
+    tags: '',
+    description: '',
+    website: '',
+    category: '',
+  });
+  setImageFile(null);
+  setImagePreview('');
+  setIsModalOpen(true);
+};
+
+const handleClearSearch = () => {
+  setSearchTerm('');
+  setDebouncedSearch('');
+};
+
+const handleInputChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+) => {
+  const { name, value } = e.target;
+  setFormData((prev) => ({ ...prev, [name]: value }));
+};
+
+const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  setImageFile(file);
+  setImagePreview(URL.createObjectURL(file));
+};
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+
+  try {
+    const payload = {
+      title: formData.title,
+      description: formData.description,
+      tags: formData.tags.split(',').map((t) => t.trim()),
+      website: formData.website,
+      category: formData.category,
+    };
+
+    if (editingId) {
+      await projectApi.updateProject(editingId, payload, imageFile);
+    } else {
+      await projectApi.createProject(payload, imageFile);
     }
-  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title || !formData.category || !formData.tags || !formData.description) {
-      console.warn('Please fill all required fields');
-      return;
-    }
+    setIsModalOpen(false);
+    fetchProjects();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-    if (!editingId && !imageFile) {
-      console.warn('Please upload a project image');
-      return;
-    }
+const handleEditProject = (project: Project) => {
+  setEditingId(project._id);
+  setFormData({
+    title: project.title,
+    description: project.description,
+    tags: project.tags?.join(', ') || '',
+    website: project.website || '',
+    category:
+      typeof project.category === 'string'
+        ? project.category
+        : project.category?._id || '',
+  });
+  setImagePreview(project.image);
+  setIsModalOpen(true);
+};
 
-    setIsSubmitting(true);
+const handleDeleteClick = (id: string) => {
+  setDeleteId(id);
+  setIsDeleteModalOpen(true);
+};
 
-    try {
-      const tagsArray = formData.tags.split(',').map((t) => t.trim()).filter(t => t);
+const handleConfirmDelete = async () => {
+  if (!deleteId) return;
 
-      if (editingId) {
-        // Update project
-        const updateData: any = {
-          title: formData.title,
-          category: formData.category, // This is already the categoryId from form
-          tags: tagsArray,
-          description: formData.description,
-          website: formData.website,
-        };
-        if (imageFile) {
-          updateData.image = imageFile;
-        }
-        const response = await projectApi.updateProject(editingId, updateData);
-        if (response.success) {
-          setIsModalOpen(false);
-          fetchProjects();
-        }
-      } else {
-        // Create new project
-        if (!imageFile) return;
-        const createData = {
-          image: imageFile,
-          title: formData.title,
-          category: formData.category, // This is already the categoryId from form
-          tags: tagsArray,
-          description: formData.description,
-          website: formData.website,
-        };
-        const response = await projectApi.createProject(createData);
-        if (response.success) {
-          setIsModalOpen(false);
-          fetchProjects();
-        }
-      }
+  setIsSubmitting(true);
+  try {
+    await projectApi.deleteProject(deleteId);
+    fetchProjects();
+    setIsDeleteModalOpen(false);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-      setFormData({
-        title: '',
-        category: '',
-        tags: '',
-        description: '',
-        website: '',
-      });
-      setImagePreview('');
-      setImageFile(null);
-    } catch (err: any) {
-      console.error('Failed to save project:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleDeleteClick = (id: string) => {
-    setDeleteId(id);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteId) return;
-
-    setIsSubmitting(true);
-    try {
-      const response = await projectApi.deleteProject(deleteId);
-      if (response.success) {
-        setIsDeleteModalOpen(false);
-        setDeleteId(null);
-        fetchProjects();
-      }
-    } catch (err: any) {
-      console.error('Failed to delete project:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleClearSearch = () => {
-    setSearchTerm('');
-  };
-
+  /* ================= RENDER ================= */
   return (
-    <div className="min-h-screen bg-linear-to-br from-white via-purple-50 to-blue-50 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-linear-to-br from-white via-purple-50 to-blue-50 p-6">
+
+     <div className="min-h-screen bg-linear-to-br from-white via-purple-50 to-blue-50 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -286,45 +239,48 @@ const ProjectsPage = () => {
           </button>
         </div>
 
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+    {/* Search and Category Filter */}
+<div className="flex flex-col sm:flex-row gap-4 mb-6">
+  
+  {/* Search */}
+  <div className="flex-1 relative">
+    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+    <input
+      type="text"
+      placeholder="Search projects..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-300 rounded-lg
+      focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+    />
+    {searchTerm && (
+      <button
+        onClick={handleClearSearch}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+      >
+        <XMarkIcon className="w-5 h-5" />
+      </button>
+    )}
+  </div>
 
-          {/* Category Filter */}
-          {/* <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-          >
-            <option value="All">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))}
-          </select> */}
-        </div>
+  {/* All Categories Dropdown */}
+  <select
+    value={selectedCategory}
+    onChange={(e) => {
+      setSelectedCategory(e.target.value);
+      setCurrentPage(1);
+    }}
+    className="w-full sm:w-56 px-4 py-2.5 bg-white border border-gray-300 rounded-lg
+    focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+  >
+    <option value="All">All Categories</option>
+    {categories.map((cat) => (
+      <option key={cat._id} value={cat._id}>
+        {cat.name}
+      </option>
+    ))}
+  </select>
+</div>
 
         {/* Search Info */}
         {debouncedSearch && (
@@ -690,6 +646,7 @@ const ProjectsPage = () => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

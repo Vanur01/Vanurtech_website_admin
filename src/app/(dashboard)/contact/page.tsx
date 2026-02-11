@@ -9,6 +9,7 @@ import {
   UserIcon,
   ChatBubbleLeftIcon,
   EyeIcon,
+  PhoneArrowDownLeftIcon,
 } from '@heroicons/react/24/outline';
 import { contactApi, Contact } from '@/api/contact.api';
 
@@ -168,6 +169,7 @@ const ContactPage = () => {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">phone</th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
                 <th className="hidden md:table-cell px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
                 <th className="hidden lg:table-cell px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Services</th>
@@ -201,7 +203,15 @@ const ContactPage = () => {
                     </div>
                   </td>
 
-                  {/* Email */}
+                  {/* phone */}
+                  <td className="px-4 sm:px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <PhoneArrowDownLeftIcon className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 truncate">{contact.phone}</span>
+                    </div>
+                  </td>
+
+                    {/* Email */}
                   <td className="px-4 sm:px-6 py-4">
                     <div className="flex items-center gap-2">
                       <EnvelopeIcon className="w-4 h-4 text-gray-400" />

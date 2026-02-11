@@ -1,22 +1,53 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.vanurmedia.com';
+const API_BASE_URL = 'http://localhost:8080';
 
-// Create axios instance with interceptors
+// Axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
 });
 
-// Add auth token to requests
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Auth interceptor
+apiClient.interceptors.request.use(
+  (config) => {
+    // ✅ FIX: Use "accessToken" to match what's stored during login
+    const token = localStorage.getItem("accessToken");
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
-// Interfaces
+// Add response interceptor for better error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401) {
+      // Clear invalid token
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userData');
+      
+      // Redirect to login (if in browser)
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// ================== TYPES ==================
+
 export interface Category {
   _id: string;
   name: string;
@@ -29,12 +60,11 @@ export interface Project {
   title: string;
   description: string;
   image: string;
-  category: string | Category; // Can be string (ID) or populated Category object
+  category: string | Category;
   tags: string[];
   website?: string;
   createdAt: string;
   updatedAt: string;
-  __v: number;
 }
 
 export interface ProjectsResponse {
@@ -61,7 +91,6 @@ export interface ProjectResponse {
 }
 
 export interface CreateProjectData {
-  image: File;
   title: string;
   description: string;
   category: string;
@@ -70,7 +99,6 @@ export interface CreateProjectData {
 }
 
 export interface UpdateProjectData {
-  image?: File;
   title: string;
   description: string;
   category: string;
@@ -78,98 +106,93 @@ export interface UpdateProjectData {
   website?: string;
 }
 
-// API functions
-export const projectApi = {
-  // Create project
-  createProject: async (data: CreateProjectData): Promise<ProjectResponse> => {
-    try {
-      const formData = new FormData();
-      formData.append('image', data.image);
-      formData.append('title', data.title);
-      formData.append('description', data.description);
-      formData.append('categoryId', data.category);
-      formData.append('website', data.website || '');
-      
-      // Append tags as array
-      data.tags.forEach((tag) => {
-        formData.append('tags', tag);
-      });
+// ================== API ==================
 
-      const response = await apiClient.post('/api/v1/project/create', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create project');
+export const projectApi = {
+  createProject: async (
+    data: CreateProjectData,
+    image: File | null
+  ): Promise<ProjectResponse> => {
+    const formData = new FormData();
+
+    // Image is required for create
+    if (!image) {
+      throw new Error("Image is required");
     }
+
+    formData.append("image", image);
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    formData.append("category", data.category);
+    formData.append("website", data.website || "");
+
+    data.tags.forEach((tag) => formData.append("tags", tag));
+
+    const response = await apiClient.post("/api/v1/project/create", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
   },
 
-  // Get all projects
   getAllProjects: async (
-    page: number = 1,
-    limit: number = 10,
+    page = 1,
+    limit = 10,
     search?: string,
     category?: string
   ): Promise<ProjectsResponse> => {
-    try {
-      const params: any = { page, limit };
-      if (search) params.search = search;
-      if (category && category !== 'All') params.category = category;
+    const params: any = { page, limit };
+    if (search) params.search = search;
+    if (category && category !== "All") params.category = category;
 
-      const response = await apiClient.get('/api/v1/project/getAll', { params });
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch projects');
-    }
+    const response = await apiClient.get("/api/v1/project/getAll", { params });
+
+    return response.data;
   },
 
-  // Get project by ID
   getProjectById: async (id: string): Promise<ProjectResponse> => {
-    try {
-      const response = await apiClient.get(`/api/v1/project/get/${id}`);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch project');
-    }
+    const response = await apiClient.get(`/api/v1/project/get/${id}`);
+    return response.data;
   },
 
-  // Update project
-  updateProject: async (id: string, data: UpdateProjectData): Promise<ProjectResponse> => {
-    try {
-      const formData = new FormData();
-      if (data.image) {
-        formData.append('image', data.image);
-      }
-      formData.append('title', data.title);
-      formData.append('description', data.description);
-      formData.append('categoryId', data.category);
-      formData.append('website', data.website || '');
+  updateProject: async (
+    id: string,
+    data: UpdateProjectData,
+    image?: File | null
+  ): Promise<ProjectResponse> => {
+    const formData = new FormData();
 
-      // Append tags as array
-      data.tags.forEach((tag) => {
-        formData.append('tags', tag);
-      });
+    // Only append image if a new one is provided
+    if (image) {
+      formData.append("image", image);
+    }
 
-      const response = await apiClient.put(`/api/v1/project/update/${id}`, formData, {
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    formData.append("category", data.category);
+    formData.append("website", data.website || "");
+
+    data.tags.forEach((tag) => formData.append("tags", tag));
+
+    const response = await apiClient.put(
+      `/api/v1/project/update/${id}`,
+      formData,
+      {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-      });
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update project');
-    }
+      }
+    );
+
+    return response.data;
   },
 
-  // Delete project
-  deleteProject: async (id: string): Promise<{ success: boolean; message: string }> => {
-    try {
-      const response = await apiClient.delete(`/api/v1/project/delete/${id}`);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete project');
-    }
+  deleteProject: async (
+    id: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.delete(`/api/v1/project/delete/${id}`);
+    return response.data;
   },
 };

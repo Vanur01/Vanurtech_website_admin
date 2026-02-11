@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.vanurmedia.com';
+const API_BASE_URL = "http://localhost:8080";
 
 // Create axios instance
 const axiosInstance = axios.create({
@@ -28,6 +28,7 @@ export interface Contact {
   _id: string;
   name: string;
   email: string;
+  phone:string;
   company: string;
   services: string[];
   message: string;

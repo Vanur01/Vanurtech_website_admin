@@ -27,9 +27,11 @@ interface FormData {
   title: string;
   category: string;
   tags: string;
+  slug: string;     // ✅ already added
   content: string;
   status: 'draft' | 'published';
 }
+
 
 const BlogsPage = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -52,13 +54,14 @@ const BlogsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [formData, setFormData] = useState<FormData>({
-    title: '',
-    category: '', // Empty string, not null
-    tags: '',
-    content: '',
-    status: 'draft',
-  });
+const [formData, setFormData] = useState<FormData>({
+  title: '',
+  category: '',
+  tags: '',
+  content: '',
+  status: 'draft',
+  slug: '',
+});
 
   const allTags = ['React', 'Next.js', 'TypeScript', 'Node.js', 'Python', 'MongoDB', 'PostgreSQL', 'Docker', 'AWS', 'Firebase', 'GraphQL', 'Express.js'];
 
@@ -186,6 +189,7 @@ const BlogsPage = () => {
       tags: '',
       content: '',
       status: 'draft',
+      slug:""
     });
     setImagePreview('');
     setImageFile(null);
@@ -206,13 +210,15 @@ const BlogsPage = () => {
           ? fullBlog.category 
           : fullBlog.category._id;
         
-        setFormData({
-          title: fullBlog.title,
-          category: categoryId,
-          tags: fullBlog.tags.join(', '),
-          content: fullBlog.content,
-          status: fullBlog.status,
-        });
+       setFormData({
+  title: fullBlog.title,
+  slug: fullBlog.slug,     // ✅ ADD
+  category: categoryId,
+  tags: fullBlog.tags.join(', '),
+  content: fullBlog.content,
+  status: fullBlog.status,
+});
+
         setImagePreview(fullBlog.coverImage);
         setImageFile(null);
         setEditingId(fullBlog._id);
@@ -225,74 +231,77 @@ const BlogsPage = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.title || !formData.category || !formData.tags || !formData.content) {
-      alert('Please fill all required fields');
-      return;
-    }
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!formData.title || !formData.category || !formData.tags || !formData.content || !formData.slug) {
+    alert('Please fill all required fields including slug');
+    return;
+  }
 
-    if (formData.title.length < 5) {
-      alert('Title must be at least 5 characters long');
-      return;
-    }
+  if (formData.title.length < 5) {
+    alert('Title must be at least 5 characters long');
+    return;
+  }
 
-    if (!editingId && !imageFile) {
-      alert('Please upload a cover image');
-      return;
-    }
+  if (!editingId && !imageFile) {
+    alert('Please upload a cover image');
+    return;
+  }
 
-    setIsSubmitting(true);
-    try {
-      const tagsArray = formData.tags.split(',').map((t) => t.trim()).filter(t => t);
+  setIsSubmitting(true);
+  try {
+    const tagsArray = formData.tags.split(',').map((t) => t.trim()).filter(t => t);
 
-      if (editingId) {
-        // Update blog
-        const updateData: any = {
-          title: formData.title,
-          category: formData.category, // This is already the categoryId from form
-          tags: tagsArray,
-          content: formData.content,
-          status: formData.status,
-        };
-        
-        if (imageFile) {
-          updateData.coverImage = imageFile;
-        }
-
-        await blogApi.updateBlog(editingId, updateData);
-      } else {
-        // Create new blog
-        if (!imageFile) return;
-        
-        await blogApi.createBlog({
-          coverImage: imageFile,
-          title: formData.title,
-          category: formData.category, // This is already the categoryId from form
-          tags: tagsArray,
-          content: formData.content,
-          status: formData.status,
-        });
+    if (editingId) {
+      // Update blog
+      const updateData: any = {
+        title: formData.title,
+        slug: formData.slug,      // ✅ ADD THIS
+        category: formData.category,
+        tags: tagsArray,
+        content: formData.content,
+        status: formData.status,
+      };
+      
+      if (imageFile) {
+        updateData.coverImage = imageFile;
       }
 
-      setIsModalOpen(false);
-      setFormData({
-        title: '',
-        category: '',
-        tags: '',
-        content: '',
-        status: 'draft',
+      await blogApi.updateBlog(editingId, updateData);
+    } else {
+      // Create new blog
+      if (!imageFile) return;
+      
+      await blogApi.createBlog({
+        coverImage: imageFile,
+        title: formData.title,
+        slug: formData.slug,      // ✅ ADD THIS
+        category: formData.category, 
+        tags: tagsArray,
+        content: formData.content,
+        status: formData.status,
       });
-      setImagePreview('');
-      setImageFile(null);
-      fetchBlogs(); // Refresh the list
-    } catch (err: any) {
-      alert(err.message || 'Failed to save blog');
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+
+    setIsModalOpen(false);
+    setFormData({
+      title: '',
+      category: '',
+      tags: '',
+      content: '',
+      status: 'draft',
+      slug: ''
+    });
+    setImagePreview('');
+    setImageFile(null);
+    fetchBlogs(); // Refresh the list
+  } catch (err: any) {
+    alert(err.message || 'Failed to save blog');
+  } finally {
+    setIsSubmitting(false);
+  }
+}; // ✅ This closing brace was the issue
 
   const handleDeleteClick = (id: string) => {
     setDeleteId(id);
@@ -358,19 +367,7 @@ const BlogsPage = () => {
             </button>
           )}
         </div>
-        {/* <select
-          value={selectedCategory}
-          onChange={(e) => {
-            setSelectedCategory(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-        >
-          <option value="All">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
-          ))}
-        </select> */}
+        
         <div className="text-sm font-semibold text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200">
           Total: {totalBlogs}
         </div>
@@ -468,11 +465,12 @@ const BlogsPage = () => {
                   </div>
 
                   {/* Author & Date */}
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-500 truncate">
-                      By {blog.author.name} • {new Date(blog.publishedAt).toLocaleDateString()}
-                    </p>
-                  </div>
+                  {/* Author & Date */}
+<div className="mb-3">
+  <p className="text-xs text-gray-500 truncate">
+    By {blog.author?.name || 'Unknown'} • {new Date(blog.publishedAt).toLocaleDateString()}
+  </p>
+</div>
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">
@@ -624,6 +622,31 @@ const BlogsPage = () => {
                   </select>
                 </div>
               </div>
+{/* Slug */}
+<div>
+  <label className="block text-sm font-semibold text-gray-900 mb-2">
+    Slug <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="text"
+    name="slug"
+    value={formData.slug}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        slug: e.target.value
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, '')
+          .replace(/\s+/g, '-'),
+      })
+    }
+    placeholder="e.g. learn-react-basics"
+    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg
+      text-gray-900 placeholder-gray-500 focus:outline-none
+      focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+    disabled={isSubmitting}
+  />
+</div>
 
               {/* Tags */}
               <div>
