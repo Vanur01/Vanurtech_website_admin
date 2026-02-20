@@ -6,6 +6,11 @@ const protectedRoutes = ['/blogs', '/contact', '/projects', '/home'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+// Allow public routes (same as CTA)
+if (pathname.startsWith('/leadsproject')) {
+  return NextResponse.next();
+}
 
   // Check if the current path is a protected route
   const isProtectedRoute = protectedRoutes.some((route) =>

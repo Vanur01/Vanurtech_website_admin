@@ -11,6 +11,7 @@ import {
   TagIcon,
   ChatBubbleLeftRightIcon,
   PhoneIcon,
+  BriefcaseIcon,
 } from "@heroicons/react/24/outline";
 
 type MenuProps = {
@@ -58,6 +59,12 @@ const menuItems = [
     label: "Contact",
     href: "/contact",
     icon: <EnvelopeIcon className="w-5 h-5" />,
+    color: "from-purple-700 to-purple-600",
+  },
+  {
+    label: "leads",
+    href: "/leads",
+    icon: <BriefcaseIcon className="w-5 h-5" />,
     color: "from-purple-700 to-purple-600",
   },
 ];

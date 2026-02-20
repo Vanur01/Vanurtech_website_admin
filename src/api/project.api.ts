@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = "https://backend.vanurmedia.com";
 
 // Axios instance
 const apiClient = axios.create({

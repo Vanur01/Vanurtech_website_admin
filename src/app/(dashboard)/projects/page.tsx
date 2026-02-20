@@ -58,6 +58,7 @@ const totalProjects = projects.length;
     tags: '',
     description: '',
     website: '',
+    category:""
   });
 
   /* ================= FETCH CATEGORIES ================= */
