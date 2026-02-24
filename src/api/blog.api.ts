@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-//api url
 const API_BASE_URL = "https://backend.vanurmedia.com"
 
 const axiosInstance = axios.create({
@@ -148,7 +147,7 @@ export const blogApi = {
   /* ---------- UPDATE BLOG ---------- */
   async updateBlog(id: string, data: UpdateBlogData): Promise<BlogResponse> {
     const formData = new FormData();
-
+  const token = localStorage.getItem("accessToken");
     if (data.coverImage) formData.append('coverImage', data.coverImage);
     if (data.title) formData.append('title', data.title);
     if (data.slug) formData.append('slug', data.slug);
@@ -160,8 +159,14 @@ export const blogApi = {
     const res = await axiosInstance.put<BlogResponse>(
       `/api/v1/blog/update/${id}`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    );
+      {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      withCredentials: true,
+    }
+  );
+  
 
     return res.data;
   },
