@@ -172,10 +172,16 @@ export const blogApi = {
   },
 
   /* ---------- DELETE BLOG ---------- */
-  async deleteBlog(id: string): Promise<{ success: boolean; message: string }> {
-    const res = await axiosInstance.delete(
-      `/api/v1/blog/delete/${id}`
-    );
-    return res.data;
-  },
+ async deleteBlog(id: string): Promise<{ success: boolean; message: string }> {
+  const token = localStorage.getItem("accessToken");
+  
+  const res = await axiosInstance.delete(`/api/v1/blog/delete/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    withCredentials: true,
+  });
+  
+  return res.data;
+},
 };
