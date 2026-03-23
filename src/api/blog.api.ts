@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = "https://backend.vanurmedia.com"
+const API_BASE_URL = "https://vanurtech-backend-admin-3.onrender.com"
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
