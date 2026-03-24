@@ -3,7 +3,7 @@ import axios from "axios";
 /**
  * Base API URL
  */
-const API_BASE_URL = "https://vanurtech-backend-admin-3.onrender.com";
+const API_BASE_URL = "https://vanurtech-backend-admin-2-8vsl.onrender.com";
 
 /**
  * Axios instance
